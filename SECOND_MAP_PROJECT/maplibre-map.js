@@ -65,24 +65,77 @@ function initMap() {
 }
 
 function addMarker(coord, color) {
-  return new maplibregl.Marker({ color })
+  // Create a container for label and dot
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.alignItems = 'center';
+  container.style.pointerEvents = 'none';
+
+  if (color && typeof color === 'string') {
+    // Not used, but kept for compatibility
+  }
+
+  if (arguments.length > 2 && arguments[2]) {
+    const labelDiv = document.createElement('div');
+    labelDiv.textContent = arguments[2];
+    labelDiv.style.fontSize = '13px';
+    labelDiv.style.fontWeight = 'bold';
+    labelDiv.style.color = '#fff';
+    labelDiv.style.background = '#026473';
+    labelDiv.style.padding = '2px 6px';
+    labelDiv.style.borderRadius = '0';
+    labelDiv.style.marginBottom = '0';
+    labelDiv.style.whiteSpace = 'nowrap';
+    labelDiv.style.boxShadow = '0 1px 4px #0002';
+    labelDiv.style.position = 'relative';
+    // Triangle pointer
+    const triangle = document.createElement('div');
+    triangle.style.position = 'absolute';
+    triangle.style.left = '50%';
+    triangle.style.bottom = '-12px';
+    triangle.style.transform = 'translateX(-50%)';
+    triangle.style.width = '0';
+    triangle.style.height = '0';
+    triangle.style.borderLeft = '12px solid transparent';
+    triangle.style.borderRight = '12px solid transparent';
+    triangle.style.borderTop = '12px solid #026473';
+    labelDiv.appendChild(triangle);
+    container.appendChild(labelDiv);
+    labelDiv.style.marginBottom = '2px'; // visually separate from dot
+  }
+
+  const el = document.createElement('div');
+  el.style.width = '16px';
+  el.style.height = '16px';
+  el.style.background = '#fff';
+  el.style.borderRadius = '50%';
+  el.style.boxSizing = 'border-box';
+  container.appendChild(el);
+
+  return new maplibregl.Marker({ element: container })
     .setLngLat(coord)
     .addTo(map);
 }
 
+
 let markerA = null;
 let markerB = null;
+let labelA = '';
+let labelB = '';
 
 function setPoint(coord, which) {
   if (which === 'A') {
     pointA = coord;
+    if (arguments.length > 2 && arguments[2]) labelA = arguments[2];
     if (markerA) markerA.remove();
-    markerA = addMarker(coord, '#ff3333');
+    markerA = addMarker(coord, '#ff3333', labelA);
   }
   if (which === 'B') {
     pointB = coord;
+    if (arguments.length > 2 && arguments[2]) labelB = arguments[2];
     if (markerB) markerB.remove();
-    markerB = addMarker(coord, '#33aaff');
+    markerB = addMarker(coord, '#33aaff', labelB);
   }
 }
 
@@ -158,7 +211,7 @@ window.addEventListener('DOMContentLoaded', () => {
         select.onchange = () => {
           const idx = select.value;
           if (results[idx]) {
-            setPoint(results[idx].center, 'A');
+            setPoint(results[idx].center, 'A', results[idx].place_name);
             map.flyTo({ center: results[idx].center, zoom: 8 });
             // Set the search box to the selected result's name
             document.getElementById('pointA').value = results[idx].place_name;
@@ -166,7 +219,7 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         };
         // Auto-select first result
-        setPoint(results[0].center, 'A');
+        setPoint(results[0].center, 'A', results[0].place_name);
         map.flyTo({ center: results[0].center, zoom: 8 });
       };
 
@@ -202,14 +255,14 @@ window.addEventListener('DOMContentLoaded', () => {
         select.onchange = () => {
           const idx = select.value;
           if (results[idx]) {
-            setPoint(results[idx].center, 'B');
+            setPoint(results[idx].center, 'B', results[idx].place_name);
             map.flyTo({ center: results[idx].center, zoom: 8 });
             document.getElementById('pointB').value = results[idx].place_name;
             select.style.display = 'none';
           }
         };
         // Auto-select first result
-        setPoint(results[0].center, 'B');
+        setPoint(results[0].center, 'B', results[0].place_name);
         map.flyTo({ center: results[0].center, zoom: 8 });
       };
 
@@ -225,9 +278,11 @@ window.addEventListener('DOMContentLoaded', () => {
       // Map click to set points
       map.on('click', (e) => {
         const which = document.getElementById('editA').checked ? 'A' : 'B';
-        setPoint([e.lngLat.lng, e.lngLat.lat], which);
-        if (which === 'A') document.getElementById('pointA').value = `${e.lngLat.lat.toFixed(5)},${e.lngLat.lng.toFixed(5)}`;
-        if (which === 'B') document.getElementById('pointB').value = `${e.lngLat.lat.toFixed(5)},${e.lngLat.lng.toFixed(5)}`;
+        const coords = [e.lngLat.lng, e.lngLat.lat];
+        const label = `${e.lngLat.lat.toFixed(5)},${e.lngLat.lng.toFixed(5)}`;
+        setPoint(coords, which, label);
+        if (which === 'A') document.getElementById('pointA').value = label;
+        if (which === 'B') document.getElementById('pointB').value = label;
       });
     });
 });
