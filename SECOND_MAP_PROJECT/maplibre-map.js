@@ -238,17 +238,19 @@ window.addEventListener('DOMContentLoaded', () => {
           select.appendChild(opt);
         });
         // Make sure the parent is positioned relatively for absolute dropdown
-        select.parentElement.style.position = 'relative';
+        select.parentElement.style.position = 'static'; // Not needed for fixed
         select.size = Math.min(results.length, 5); // Show up to 5 results
         select.style.display = 'block';
         select.style.background = '#222';
         select.style.color = '#fff';
         select.style.border = '1px solid #888';
-        select.style.position = 'absolute';
+        select.style.position = 'fixed';
         select.style.zIndex = 2001;
-        select.style.left = 0;
-        select.style.top = select.parentElement.offsetHeight + 'px';
-        select.style.width = '100%';
+        select.style.left = '600px'; // Fixed position from window left
+        // Calculate top offset below the search field
+        const parentRectA = select.parentElement.getBoundingClientRect();
+        select.style.top = (parentRectA.top + select.parentElement.offsetHeight) + 'px';
+        select.style.width = select.parentElement.offsetWidth + 'px';
         select.onchange = () => {
           const idx = select.value;
           // Only act if a real result is chosen (not the prompt)
@@ -296,17 +298,19 @@ window.addEventListener('DOMContentLoaded', () => {
           select.appendChild(opt);
         });
         // Make sure the parent is positioned relatively for absolute dropdown
-        select.parentElement.style.position = 'relative';
+        select.parentElement.style.position = 'static'; // Not needed for fixed
         select.size = Math.min(results.length, 5); // Show up to 5 results
         select.style.display = 'block';
         select.style.background = '#222';
         select.style.color = '#fff';
         select.style.border = '1px solid #888';
-        select.style.position = 'absolute';
+        select.style.position = 'fixed';
         select.style.zIndex = 2001;
-        select.style.left = 0;
-        select.style.top = select.parentElement.offsetHeight + 'px';
-        select.style.width = '100%';
+        select.style.left = '600px'; // Fixed position from window left
+        // Calculate top offset below the search field
+        const parentRectB = select.parentElement.getBoundingClientRect();
+        select.style.top = (parentRectB.top + select.parentElement.offsetHeight) + 'px';
+        select.style.width = select.parentElement.offsetWidth + 'px';
         select.onchange = () => {
           const idx = select.value;
           // Only act if a real result is chosen (not the prompt)

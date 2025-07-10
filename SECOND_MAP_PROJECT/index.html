@@ -60,6 +60,7 @@
         margin-bottom: 8px;
         width: 100%;
         justify-content: flex-start;
+        position: relative;
       }
       #map {
         width: 100%;
@@ -69,7 +70,7 @@
         min-height: 0 !important;
         margin: 0 0 16px 0;
         display: block;
-        border-radius: 12px;
+        border-radius: 0;
         box-shadow: 0 2px 12px #000a;
         background: #222;
         position: relative;
@@ -87,6 +88,21 @@
       }
       #settingsMenu {
         min-width: 300px;
+      }
+      /* Ensure UI is above the map and clickable */
+      .ui-panel, .container, .row, #settingsMenu, #openOutput, #cueBtn, #animateBtn, #searchA, #searchB, #pointA, #pointB, #resultsA, #resultsB {
+        position: relative;
+        z-index: 10;
+      }
+      /* Force dropdowns to appear above all other elements */
+      #resultsA, #resultsB {
+        position: absolute !important;
+        z-index: 99999 !important;
+        left: 220px !important;
+        top: 100% !important;
+        width: 300px !important;
+        min-width: 200px;
+        max-width: 400px;
       }
     </style>
   </head>
