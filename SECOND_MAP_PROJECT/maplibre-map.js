@@ -182,6 +182,37 @@ window.addEventListener('DOMContentLoaded', () => {
       });
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
+      // Settings menu logic
+      const settingsBtn = document.getElementById('settingsBtn');
+      const settingsMenu = document.getElementById('settingsMenu');
+      const closeSettings = document.getElementById('closeSettings');
+      const mapSize = document.getElementById('mapSize');
+      const frameRate = document.getElementById('frameRate');
+      const mapDiv = document.getElementById('map');
+      let currentFrameRate = 25;
+
+      settingsBtn.onclick = () => {
+        settingsMenu.style.display = 'block';
+      };
+      closeSettings.onclick = () => {
+        settingsMenu.style.display = 'none';
+      };
+      mapSize.onchange = () => {
+        const val = mapSize.value;
+        if (val === '1920x1080') {
+          mapDiv.style.width = '1920px';
+          mapDiv.style.height = '1080px';
+        } else if (val === '3840x2160') {
+          mapDiv.style.width = '3840px';
+          mapDiv.style.height = '2160px';
+        }
+        map.resize();
+      };
+      frameRate.onchange = () => {
+        currentFrameRate = parseInt(frameRate.value, 10);
+        // You can use currentFrameRate elsewhere for animation, export, etc.
+      };
+
       // Point A search
       document.getElementById('searchA').onclick = async () => {
         const val = document.getElementById('pointA').value.trim();
@@ -299,6 +330,14 @@ window.addEventListener('DOMContentLoaded', () => {
       };
 
       // Animate
+      // CUE button: jump to first frame (pointA) and hold
+      document.getElementById('cueBtn').onclick = () => {
+        if (pointA) {
+          map.jumpTo({ center: pointA });
+        }
+      };
+
+      // Animate button: run animation from A to B
       document.getElementById('animateBtn').onclick = () => {
         const animTime = parseFloat(document.getElementById('animTime').value) * 1000;
         if (pointA && pointB) {
