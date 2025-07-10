@@ -78,7 +78,8 @@ function addMarker(coord, color) {
 
   if (arguments.length > 2 && arguments[2]) {
     const labelDiv = document.createElement('div');
-    labelDiv.textContent = arguments[2];
+    // Always show uppercase, use custom font if available
+    labelDiv.textContent = String(arguments[2]).toUpperCase();
     labelDiv.style.fontSize = '13px';
     labelDiv.style.fontWeight = 'bold';
     labelDiv.style.color = '#fff';
@@ -89,6 +90,8 @@ function addMarker(coord, color) {
     labelDiv.style.whiteSpace = 'nowrap';
     labelDiv.style.boxShadow = '0 1px 4px #0002';
     labelDiv.style.position = 'relative';
+    labelDiv.style.fontFamily = "ITV Reem Avid, Montserrat, Arial, sans-serif";
+    labelDiv.style.letterSpacing = '0.5px';
     // Triangle pointer
     const triangle = document.createElement('div');
     triangle.style.position = 'absolute';
@@ -194,8 +197,8 @@ window.addEventListener('DOMContentLoaded', () => {
         const promptOpt = document.createElement('option');
         promptOpt.value = '';
         promptOpt.textContent = 'Please Choose...';
-        promptOpt.disabled = true;
         promptOpt.selected = true;
+        promptOpt.disabled = false;
         select.appendChild(promptOpt);
         results.forEach((f, i) => {
           const opt = document.createElement('option');
@@ -217,14 +220,23 @@ window.addEventListener('DOMContentLoaded', () => {
         select.style.width = '100%';
         select.onchange = () => {
           const idx = select.value;
-          if (results[idx]) {
-            setPoint(results[idx].center, 'A', results[idx].place_name);
-            map.flyTo({ center: results[idx].center, zoom: 8 });
-            // Set the search box to the selected result's name
-            document.getElementById('pointA').value = results[idx].place_name;
+          // Only act if a real result is chosen (not the prompt)
+          if (idx !== '') {
+            const i = parseInt(idx, 10);
+            if (!isNaN(i) && results[i]) {
+              document.getElementById('pointA').value = results[i].place_name;
+              setPoint(results[i].center, 'A', results[i].place_name);
+              map.flyTo({ center: results[i].center, zoom: 8 });
+              select.style.display = 'none';
+            }
           }
-          select.style.display = 'none';
         };
+        // Allow editing the label after selection
+        document.getElementById('pointA').addEventListener('input', function inputAHandler() {
+          if (markerA && pointA) {
+            setPoint(pointA, 'A', this.value);
+          }
+        });
         // Do not auto-select first result; require user to choose
       };
 
@@ -243,8 +255,8 @@ window.addEventListener('DOMContentLoaded', () => {
         const promptOpt = document.createElement('option');
         promptOpt.value = '';
         promptOpt.textContent = 'Please Choose...';
-        promptOpt.disabled = true;
         promptOpt.selected = true;
+        promptOpt.disabled = false;
         select.appendChild(promptOpt);
         results.forEach((f, i) => {
           const opt = document.createElement('option');
@@ -266,13 +278,23 @@ window.addEventListener('DOMContentLoaded', () => {
         select.style.width = '100%';
         select.onchange = () => {
           const idx = select.value;
-          if (results[idx]) {
-            setPoint(results[idx].center, 'B', results[idx].place_name);
-            map.flyTo({ center: results[idx].center, zoom: 8 });
-            document.getElementById('pointB').value = results[idx].place_name;
+          // Only act if a real result is chosen (not the prompt)
+          if (idx !== '') {
+            const i = parseInt(idx, 10);
+            if (!isNaN(i) && results[i]) {
+              document.getElementById('pointB').value = results[i].place_name;
+              setPoint(results[i].center, 'B', results[i].place_name);
+              map.flyTo({ center: results[i].center, zoom: 8 });
+              select.style.display = 'none';
+            }
           }
-          select.style.display = 'none';
         };
+        // Allow editing the label after selection
+        document.getElementById('pointB').addEventListener('input', function inputBHandler() {
+          if (markerB && pointB) {
+            setPoint(pointB, 'B', this.value);
+          }
+        });
         // Do not auto-select first result; require user to choose
       };
 
