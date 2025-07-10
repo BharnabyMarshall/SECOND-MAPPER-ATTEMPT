@@ -330,20 +330,57 @@ window.addEventListener('DOMContentLoaded', () => {
       };
 
       // Animate
-      // CUE button: jump to first frame (pointA) and hold
+      // BroadcastChannel for EM OUTPUT sync
+      const channel = new BroadcastChannel('em-map-sync');
+
+      // CUE button: jump to first frame (pointA) and hold, and sync to output
       document.getElementById('cueBtn').onclick = () => {
         if (pointA) {
-          map.jumpTo({ center: pointA });
+          const zoom = map.getZoom();
+          const bearing = map.getBearing();
+          const pitch = map.getPitch();
+          map.jumpTo({ center: pointA, zoom, bearing, pitch });
+          channel.postMessage({
+            type: 'cue',
+            center: pointA,
+            zoom,
+            bearing,
+            pitch
+          });
         }
       };
 
-      // Animate button: run animation from A to B
+      // Animate button: run animation from A to B, and sync to output
       document.getElementById('animateBtn').onclick = () => {
         const animTime = parseFloat(document.getElementById('animTime').value) * 1000;
         if (pointA && pointB) {
-          map.jumpTo({ center: pointA });
+          const zoom = map.getZoom();
+          const bearing = map.getBearing();
+          const pitch = map.getPitch();
+          map.jumpTo({ center: pointA, zoom, bearing, pitch });
           map.flyTo({ center: pointB, duration: animTime });
+          channel.postMessage({
+            type: 'animate',
+            animTime,
+            from: pointA,
+            to: pointB,
+            zoom,
+            bearing,
+            pitch
+          });
         }
+      };
+
+      // Sync points/labels to output tab whenever setPoint is called
+      const originalSetPoint = setPoint;
+      setPoint = function(coord, which, label) {
+        originalSetPoint(coord, which, label);
+        channel.postMessage({ type: 'setPoint', coord, which, label });
+      };
+
+      // Open Output Tab button
+      document.getElementById('openOutput').onclick = () => {
+        window.open('output.html', 'EM OUTPUT');
       };
 
       // Map click to set points
