@@ -190,6 +190,13 @@ window.addEventListener('DOMContentLoaded', () => {
           select.style.display = 'none';
           return;
         }
+        // Add a prompt option
+        const promptOpt = document.createElement('option');
+        promptOpt.value = '';
+        promptOpt.textContent = 'Please Choose...';
+        promptOpt.disabled = true;
+        promptOpt.selected = true;
+        select.appendChild(promptOpt);
         results.forEach((f, i) => {
           const opt = document.createElement('option');
           opt.value = i;
@@ -215,12 +222,10 @@ window.addEventListener('DOMContentLoaded', () => {
             map.flyTo({ center: results[idx].center, zoom: 8 });
             // Set the search box to the selected result's name
             document.getElementById('pointA').value = results[idx].place_name;
-            select.style.display = 'none';
           }
+          select.style.display = 'none';
         };
-        // Auto-select first result
-        setPoint(results[0].center, 'A', results[0].place_name);
-        map.flyTo({ center: results[0].center, zoom: 8 });
+        // Do not auto-select first result; require user to choose
       };
 
       // Point B search
@@ -234,6 +239,13 @@ window.addEventListener('DOMContentLoaded', () => {
           select.style.display = 'none';
           return;
         }
+        // Add a prompt option
+        const promptOpt = document.createElement('option');
+        promptOpt.value = '';
+        promptOpt.textContent = 'Please Choose...';
+        promptOpt.disabled = true;
+        promptOpt.selected = true;
+        select.appendChild(promptOpt);
         results.forEach((f, i) => {
           const opt = document.createElement('option');
           opt.value = i;
@@ -258,12 +270,10 @@ window.addEventListener('DOMContentLoaded', () => {
             setPoint(results[idx].center, 'B', results[idx].place_name);
             map.flyTo({ center: results[idx].center, zoom: 8 });
             document.getElementById('pointB').value = results[idx].place_name;
-            select.style.display = 'none';
           }
+          select.style.display = 'none';
         };
-        // Auto-select first result
-        setPoint(results[0].center, 'B', results[0].place_name);
-        map.flyTo({ center: results[0].center, zoom: 8 });
+        // Do not auto-select first result; require user to choose
       };
 
       // Animate
