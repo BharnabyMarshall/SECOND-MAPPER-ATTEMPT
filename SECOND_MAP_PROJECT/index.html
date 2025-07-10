@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, initial-scale=1.0" />
+    <title>EM CONTROL</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: #222;
+        color: #fff;
+        font-family: sans-serif;
+        box-sizing: border-box;
+      }
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+      }
+      .ui-panel {
+        margin-top: 16px;
+        background: rgba(30,30,30,0.9);
+        padding: 16px 24px;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 2px 8px #0008;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 900px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        width: 100%;
+        justify-content: center;
+      }
+      #map {
+        width: 100%;
+        max-width: 900px;
+        aspect-ratio: 16 / 9;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 auto 16px auto;
+        display: block;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px #000a;
+        background: #222;
+        position: relative;
+      }
+      .leaflet-container {
+        aspect-ratio: 16 / 9 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        background: #222;
+      }
+      .zoom-panel {
+        justify-content: center;
+        margin-bottom: 12px;
+      }
+      #settingsMenu {
+        min-width: 300px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="ui-panel">
+        <div class="row">
+          <input type="radio" name="editPoint" id="editA" value="A" checked>
+          <label for="editA">Point A:</label>
+          <input id="pointA" type="text" placeholder="lat,lng or name" size="18">
+          <button id="searchA">Search</button>
+          <select id="resultsA" style="display:none"></select>
+        </div>
+        <div class="row">
+          <input type="radio" name="editPoint" id="editB" value="B">
+          <label for="editB">Point B:</label>
+          <input id="pointB" type="text" placeholder="lat,lng or name" size="18">
+          <button id="searchB">Search</button>
+          <select id="resultsB" style="display:none"></select>
+        </div>
+        <div class="row zoom-panel">
+          <button id="zoomMinus">-</button>
+          <button id="zoomPlus">+</button>
+          <span style="margin-left:8px;">Zoom</span>
+        </div>
+        <div class="row">
+          <label>Animation Time (seconds): <input id="animTime" type="number" value="2" min="0.1" max="10" step="0.1"></label>
+          <button id="animateBtn">Animate</button>
+          <span id="hint">Click on the map to set points.</span>
+        </div>
+        <div class="row">
+          <button id="openOutput">Open Output Tab</button>
+          <span style="margin-left:8px;">(for playout/broadcast)</span>
+        </div>
+        <div class="row">
+          <button id="settingsBtn">Settings</button>
+        </div>
+        <div id="settingsMenu" style="display:none; position:absolute; top:80px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:20px; border-radius:8px; z-index:2000; box-shadow:0 2px 8px #0008;">
+          <h3>Settings</h3>
+          <label>Map Size:
+            <select id="mapSize">
+              <option value="1920x1080">1920x1080</option>
+              <option value="3840x2160">4K (3840x2160)</option>
+            </select>
+          </label>
+          <br><br>
+          <label>Frame Rate:
+            <select id="frameRate">
+              <option value="25">25 fps</option>
+              <option value="50">50 fps</option>
+            </select>
+          </label>
+          <br><br>
+          <button id="closeSettings">Close</button>
+        </div>
+      </div>
+      <div id="map"></div>
+    </div>
+    <!-- <script type="module" src="/src/main.js"></script> -->
+    <script type="module" src="maplibre-map.js"></script>
+  </body>
+</html>
