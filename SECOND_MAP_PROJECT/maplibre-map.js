@@ -48,6 +48,11 @@ let map;
 let pointA = null;
 let pointB = null;
 
+// Simple Zoom state
+let simpleZoomTarget = null;
+let simpleZoomLevel = 8;
+const simpleZoomOutSteps = 2;
+
 function initMap() {
   // Load the custom style JSON dynamically
   fetch('custom-style.json')
@@ -56,11 +61,38 @@ function initMap() {
       map = new maplibregl.Map({
         container: 'map',
         style: style,
-        center: [0, 0],
-        zoom: 2,
+        // Center on Northern Europe (approximate: longitude 15, latitude 60)
+        center: [15, 60],
+        zoom: 2.5, // Zoomed out by about 2 steps from previous default
         attributionControl: false
       });
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+      // --- Ensure Simple Zoom end zoom is always updated on zoom change ---
+      let lastZoomSetByUser = null;
+      let ignoreNextZoomend = false;
+      map.on('zoomstart', () => {
+        if (modeSimpleZoom.checked && simpleZoomTarget) {
+          lastZoomSetByUser = map.getZoom();
+        }
+      });
+      map.on('zoomend', () => {
+        if (modeSimpleZoom.checked && simpleZoomTarget) {
+          // Only update if not triggered by animation
+          if (!ignoreNextZoomend) {
+            simpleZoomLevel = map.getZoom();
+          }
+          ignoreNextZoomend = false;
+        }
+      });
+
+      // Helper for Simple Zoom: always use the saved zoom, not the current map zoom
+      function getSimpleZoomStart() {
+        // Always use the last user-set zoom, not the current map zoom
+        return simpleZoomLevel - simpleZoomOutSteps;
+      }
+
+      // No vignette or overlay added
     });
 }
 
@@ -170,17 +202,59 @@ window.setMapColors = setMapColors;
 
 // Connect UI controls
 window.addEventListener('DOMContentLoaded', () => {
+  // Animation mode radio buttons
+  const modePointToPoint = document.getElementById('modePointToPoint');
+  const modeSimpleZoom = document.getElementById('modeSimpleZoom');
+  const rowPointB = document.getElementById('pointB').closest('.row');
+
+  function updateAnimModeUI() {
+    if (modeSimpleZoom.checked) {
+      // Hide Point B row and marker
+      rowPointB.style.display = 'none';
+      if (markerB) { markerB.remove(); markerB = null; labelB = ''; pointB = null; }
+    } else {
+      rowPointB.style.display = '';
+    }
+  }
+  modePointToPoint.addEventListener('change', updateAnimModeUI);
+  modeSimpleZoom.addEventListener('change', updateAnimModeUI);
+  updateAnimModeUI();
   fetch('custom-style.json')
     .then(response => response.json())
     .then(style => {
       map = new maplibregl.Map({
         container: 'map',
         style: style,
-        center: [0, 0],
-        zoom: 2,
+        // Center on Northern Europe (approximate: longitude 15, latitude 60)
+        center: [15, 60],
+        zoom: 4.5,
         attributionControl: false
       });
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+      // --- Ensure Simple Zoom end zoom is always updated on zoom change ---
+      let lastZoomSetByUser = null;
+      let ignoreNextZoomend = false;
+      map.on('zoomstart', () => {
+        if (modeSimpleZoom.checked && simpleZoomTarget) {
+          lastZoomSetByUser = map.getZoom();
+        }
+      });
+      map.on('zoomend', () => {
+        if (modeSimpleZoom.checked && simpleZoomTarget) {
+          // Only update if not triggered by animation
+          if (!ignoreNextZoomend) {
+            simpleZoomLevel = map.getZoom();
+          }
+          ignoreNextZoomend = false;
+        }
+      });
+
+      // Helper for Simple Zoom: always use the saved zoom, not the current map zoom
+      function getSimpleZoomStart() {
+        // Always use the last user-set zoom, not the current map zoom
+        return simpleZoomLevel - simpleZoomOutSteps;
+      }
 
       // Settings menu logic
       const settingsBtn = document.getElementById('settingsBtn');
@@ -253,13 +327,19 @@ window.addEventListener('DOMContentLoaded', () => {
         select.style.width = select.parentElement.offsetWidth + 'px';
         select.onchange = () => {
           const idx = select.value;
-          // Only act if a real result is chosen (not the prompt)
           if (idx !== '') {
             const i = parseInt(idx, 10);
             if (!isNaN(i) && results[i]) {
               document.getElementById('pointA').value = results[i].place_name;
               setPoint(results[i].center, 'A', results[i].place_name);
-              map.flyTo({ center: results[i].center, zoom: 8 });
+              if (modeSimpleZoom.checked) {
+                // Center map on target, let user adjust zoom
+                map.jumpTo({ center: results[i].center });
+                simpleZoomTarget = results[i].center;
+                simpleZoomLevel = map.getZoom(); // Will be updated by user
+              } else {
+                map.flyTo({ center: results[i].center, zoom: 8 });
+              }
               select.style.display = 'none';
             }
           }
@@ -339,39 +419,85 @@ window.addEventListener('DOMContentLoaded', () => {
 
       // CUE button: jump to first frame (pointA) and hold, and sync to output
       document.getElementById('cueBtn').onclick = () => {
-        if (pointA) {
-          const zoom = map.getZoom();
-          const bearing = map.getBearing();
-          const pitch = map.getPitch();
-          map.jumpTo({ center: pointA, zoom, bearing, pitch });
-          channel.postMessage({
-            type: 'cue',
-            center: pointA,
-            zoom,
-            bearing,
-            pitch
-          });
+        if (modeSimpleZoom.checked) {
+          if (simpleZoomTarget && typeof simpleZoomLevel === 'number') {
+            // Always use the last user-set zoom, never accumulate
+            // Only update simpleZoomLevel if the user has changed the zoom since last cue/animate
+            // Prevent CUE from ever causing cumulative zoom out
+            // Save the current user zoom if the map is at the target center
+            const mapCenter = map.getCenter();
+            const isAtTarget = Math.abs(mapCenter.lng - simpleZoomTarget[0]) < 1e-6 && Math.abs(mapCenter.lat - simpleZoomTarget[1]) < 1e-6;
+            if (isAtTarget) {
+              // If the user has changed the zoom, update simpleZoomLevel
+              if (!ignoreNextZoomend) {
+                simpleZoomLevel = map.getZoom();
+              }
+            }
+            const startZoom = simpleZoomLevel - simpleZoomOutSteps;
+            ignoreNextZoomend = true;
+            map.jumpTo({ center: simpleZoomTarget, zoom: startZoom });
+            channel.postMessage({
+              type: 'cue',
+              center: simpleZoomTarget,
+              zoom: startZoom,
+              bearing: map.getBearing(),
+              pitch: map.getPitch()
+            });
+          }
+        } else {
+          if (pointA) {
+            const zoom = map.getZoom();
+            const bearing = map.getBearing();
+            const pitch = map.getPitch();
+            map.jumpTo({ center: pointA, zoom, bearing, pitch });
+            channel.postMessage({
+              type: 'cue',
+              center: pointA,
+              zoom,
+              bearing,
+              pitch
+            });
+          }
         }
       };
 
       // Animate button: run animation from A to B, and sync to output
       document.getElementById('animateBtn').onclick = () => {
         const animTime = parseFloat(document.getElementById('animTime').value) * 1000;
-        if (pointA && pointB) {
-          const zoom = map.getZoom();
-          const bearing = map.getBearing();
-          const pitch = map.getPitch();
-          map.jumpTo({ center: pointA, zoom, bearing, pitch });
-          map.flyTo({ center: pointB, duration: animTime });
-          channel.postMessage({
-            type: 'animate',
-            animTime,
-            from: pointA,
-            to: pointB,
-            zoom,
-            bearing,
-            pitch
-          });
+        if (modeSimpleZoom.checked) {
+          if (simpleZoomTarget && typeof simpleZoomLevel === 'number') {
+            const startZoom = getSimpleZoomStart();
+            ignoreNextZoomend = true;
+            map.jumpTo({ center: simpleZoomTarget, zoom: startZoom });
+            map.flyTo({ center: simpleZoomTarget, zoom: simpleZoomLevel, duration: animTime });
+            channel.postMessage({
+              type: 'animate',
+              animTime,
+              from: simpleZoomTarget,
+              to: simpleZoomTarget,
+              zoom: simpleZoomLevel,
+              bearing: map.getBearing(),
+              pitch: map.getPitch()
+            });
+          }
+        } else {
+          // Point to Point: normal A to B
+          if (pointA && pointB) {
+            const zoom = map.getZoom();
+            const bearing = map.getBearing();
+            const pitch = map.getPitch();
+            map.jumpTo({ center: pointA, zoom, bearing, pitch });
+            map.flyTo({ center: pointB, duration: animTime });
+            channel.postMessage({
+              type: 'animate',
+              animTime,
+              from: pointA,
+              to: pointB,
+              zoom,
+              bearing,
+              pitch
+            });
+          }
         }
       };
 
