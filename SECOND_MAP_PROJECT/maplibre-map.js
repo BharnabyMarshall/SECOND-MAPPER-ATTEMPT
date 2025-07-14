@@ -207,6 +207,10 @@ window.addEventListener('DOMContentLoaded', () => {
   const modeSimpleZoom = document.getElementById('modeSimpleZoom');
   const rowPointB = document.getElementById('pointB').closest('.row');
 
+  // Animate and CUE buttons
+  const animateBtn = document.getElementById('animateBtn');
+  const cueBtn = document.getElementById('cueBtn');
+
   function updateAnimModeUI() {
     if (modeSimpleZoom.checked) {
       // Hide Point B row and marker
@@ -215,6 +219,8 @@ window.addEventListener('DOMContentLoaded', () => {
     } else {
       rowPointB.style.display = '';
     }
+    // In both modes, disable Animate until CUE is pressed
+    animateBtn.disabled = true;
   }
   modePointToPoint.addEventListener('change', updateAnimModeUI);
   modeSimpleZoom.addEventListener('change', updateAnimModeUI);
@@ -421,6 +427,8 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('cueBtn').onclick = () => {
         if (modeSimpleZoom.checked) {
           if (simpleZoomTarget && typeof simpleZoomLevel === 'number') {
+            // Enable Animate button after CUE is pressed
+            animateBtn.disabled = false;
             // Always use the last user-set zoom, never accumulate
             // Only update simpleZoomLevel if the user has changed the zoom since last cue/animate
             // Prevent CUE from ever causing cumulative zoom out
@@ -446,6 +454,8 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         } else {
           if (pointA) {
+            // Enable Animate button after CUE is pressed
+            animateBtn.disabled = false;
             const zoom = map.getZoom();
             const bearing = map.getBearing();
             const pitch = map.getPitch();
@@ -479,6 +489,10 @@ window.addEventListener('DOMContentLoaded', () => {
               bearing: map.getBearing(),
               pitch: map.getPitch()
             });
+            // Disable Animate button after animation completes
+            map.once('moveend', () => {
+              animateBtn.disabled = true;
+            });
           }
         } else {
           // Point to Point: normal A to B
@@ -496,6 +510,10 @@ window.addEventListener('DOMContentLoaded', () => {
               zoom,
               bearing,
               pitch
+            });
+            // Disable Animate button after animation completes
+            map.once('moveend', () => {
+              animateBtn.disabled = true;
             });
           }
         }
