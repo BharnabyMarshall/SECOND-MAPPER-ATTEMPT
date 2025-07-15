@@ -1,3 +1,9 @@
+// Helper to re-add markerA on every map move
+function keepMarkerAInSync() {
+  if (markerA && pointA) {
+    markerA.setLngLat(pointA);
+  }
+}
 // maplibre-map.js
 // MapLibre GL JS map logic for animating between Point A and Point B
 
@@ -54,8 +60,8 @@ let simpleZoomLevel = 8;
 const simpleZoomOutSteps = 2;
 
 function initMap() {
-  // Load the custom style JSON dynamically
-  fetch('custom-style.json')
+  // Load the positron style JSON dynamically
+  fetch('positron.json')
     .then(response => response.json())
     .then(style => {
       map = new maplibregl.Map({
@@ -188,7 +194,7 @@ function setMapColors(landColor = '#eaeaea', seaColor = '#aadaff') {
 
 // Helper: Geocode using MapTiler API
 async function geocode(query) {
-  const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=mTauVrXF22hFSJJ8MDcT`;
+  const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=Ku1lF67CbFiT0fC3NUzQ`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
@@ -225,7 +231,7 @@ window.addEventListener('DOMContentLoaded', () => {
   modePointToPoint.addEventListener('change', updateAnimModeUI);
   modeSimpleZoom.addEventListener('change', updateAnimModeUI);
   updateAnimModeUI();
-  fetch('custom-style.json')
+  fetch('positron.json')
     .then(response => response.json())
     .then(style => {
       map = new maplibregl.Map({
@@ -237,6 +243,8 @@ window.addEventListener('DOMContentLoaded', () => {
         attributionControl: false
       });
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
+      // Keep Point A marker in sync during map moves
+      map.on('move', keepMarkerAInSync);
 
       // --- Ensure Simple Zoom end zoom is always updated on zoom change ---
       let lastZoomSetByUser = null;
@@ -340,11 +348,11 @@ window.addEventListener('DOMContentLoaded', () => {
               setPoint(results[i].center, 'A', results[i].place_name);
               if (modeSimpleZoom.checked) {
                 // Center map on target, let user adjust zoom
-                map.jumpTo({ center: results[i].center });
+                map.flyTo({ center: results[i].center, duration: 2000 });
                 simpleZoomTarget = results[i].center;
                 simpleZoomLevel = map.getZoom(); // Will be updated by user
               } else {
-                map.flyTo({ center: results[i].center, zoom: 8 });
+                map.flyTo({ center: results[i].center, zoom: 8, duration: 2000 });
               }
               select.style.display = 'none';
             }
@@ -405,7 +413,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (!isNaN(i) && results[i]) {
               document.getElementById('pointB').value = results[i].place_name;
               setPoint(results[i].center, 'B', results[i].place_name);
-              map.flyTo({ center: results[i].center, zoom: 8 });
+              map.flyTo({ center: results[i].center, zoom: 8, duration: 2000 });
               select.style.display = 'none';
             }
           }
@@ -443,7 +451,7 @@ window.addEventListener('DOMContentLoaded', () => {
             }
             const startZoom = simpleZoomLevel - simpleZoomOutSteps;
             ignoreNextZoomend = true;
-            map.jumpTo({ center: simpleZoomTarget, zoom: startZoom });
+            map.flyTo({ center: simpleZoomTarget, zoom: startZoom, duration: 2000 });
             channel.postMessage({
               type: 'cue',
               center: simpleZoomTarget,
@@ -478,7 +486,7 @@ window.addEventListener('DOMContentLoaded', () => {
           if (simpleZoomTarget && typeof simpleZoomLevel === 'number') {
             const startZoom = getSimpleZoomStart();
             ignoreNextZoomend = true;
-            map.jumpTo({ center: simpleZoomTarget, zoom: startZoom });
+            map.flyTo({ center: simpleZoomTarget, zoom: startZoom, duration: 2000 });
             map.flyTo({ center: simpleZoomTarget, zoom: simpleZoomLevel, duration: animTime });
             channel.postMessage({
               type: 'animate',
@@ -500,7 +508,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const zoom = map.getZoom();
             const bearing = map.getBearing();
             const pitch = map.getPitch();
-            map.jumpTo({ center: pointA, zoom, bearing, pitch });
+            map.flyTo({ center: pointA, zoom, bearing, pitch, duration: 2000 });
             map.flyTo({ center: pointB, duration: animTime });
             channel.postMessage({
               type: 'animate',

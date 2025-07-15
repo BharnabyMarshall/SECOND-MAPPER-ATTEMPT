@@ -13,7 +13,7 @@
   "light": {"intensity": 1},
   "sources": {
     "maplibre": {
-      "url": "https://demotiles.maplibre.org/tiles/tiles.json",
+      "url": "https://api.maptiler.com/tiles/v3/tiles.json?key=Ku1lF67CbFiT0fC3NUzQ",
       "type": "vector"
     },
     "crimea": {
@@ -406,7 +406,7 @@
       }
     }
   },
-  "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  "glyphs": "https://api.maptiler.com/fonts/{fontstack}/{range}.pbf?key=Ku1lF67CbFiT0fC3NUzQ",
   "layers": [
     {
       "id": "background",
