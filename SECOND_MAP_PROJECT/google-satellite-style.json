@@ -1,0 +1,64 @@
+{
+  "version": 8,
+  "name": "Google Satellite",
+  "metadata": {
+    "mapbox:autocomposite": false,
+    "mapbox:type": "template"
+  },
+  "sources": {
+    "google-satellite": {
+      "type": "raster",
+      "tiles": [
+        "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+      ],
+      "tileSize": 256,
+      "attribution": "© Google"
+    },
+    "openmaptiles": {
+      "type": "vector",
+      "url": "https://api.maptiler.com/tiles/v3/tiles.json?key=mTauVrXF22hFSJJ8MDcT"
+    }
+  },
+  "sprite": "https://api.maptiler.com/maps/streets/sprite",
+  "glyphs": "https://api.maptiler.com/fonts/{fontstack}/{range}.pbf?key=mTauVrXF22hFSJJ8MDcT",
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#000000"
+      }
+    },
+    {
+      "id": "google-satellite",
+      "type": "raster",
+      "source": "google-satellite",
+      "minzoom": 0,
+      "maxzoom": 22
+    },
+    {
+      "id": "country-borders",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "admin",
+      "filter": ["==", "admin_level", 2],
+      "paint": {
+        "line-color": "#ffffff",
+        "line-opacity": 0.6,
+        "line-width": 1
+      }
+    },
+    {
+      "id": "state-borders",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "admin",
+      "filter": ["==", "admin_level", 4],
+      "paint": {
+        "line-color": "#ffffff",
+        "line-opacity": 0.4,
+        "line-width": 0.5
+      }
+    }
+  ]
+}

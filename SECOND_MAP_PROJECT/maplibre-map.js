@@ -54,7 +54,8 @@ const defaultStyle = {
 const mapStyles = {
   positron: 'positron.json',
   snazzy: 'snazzy-style.json',
-  google: 'google-style.json'
+  google: 'google-style.json',
+  satellite: 'google-satellite-style.json'
 };
 
 let map;
