@@ -50,6 +50,13 @@ const defaultStyle = {
   ]
 };
 
+// Available map styles
+const mapStyles = {
+  positron: 'positron.json',
+  snazzy: 'snazzy-style.json',
+  google: 'google-style.json'
+};
+
 let map;
 let pointA = null;
 let pointB = null;
@@ -192,6 +199,57 @@ function setMapColors(landColor = '#eaeaea', seaColor = '#aadaff') {
   // For full vector style, you would update land layers here if present
 }
 
+// Function to change map style
+async function changeMapStyle(styleKey) {
+  console.log('changeMapStyle called with:', styleKey); // Debug log
+  if (!map || !mapStyles[styleKey]) {
+    console.error('Map not ready or style not found:', { map: !!map, styleKey, mapStyles });
+    return;
+  }
+  
+  // Store current map state
+  const center = map.getCenter();
+  const zoom = map.getZoom();
+  const bearing = map.getBearing();
+  const pitch = map.getPitch();
+  
+  try {
+    console.log('Fetching style:', mapStyles[styleKey]); // Debug log
+    // Fetch and apply new style
+    const response = await fetch(mapStyles[styleKey]);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const style = await response.json();
+    
+    console.log('Setting style on map'); // Debug log
+    map.setStyle(style);
+    
+    // Wait for style to load, then restore map state and markers
+    map.once('style.load', () => {
+      console.log('Style loaded, restoring state'); // Debug log
+      map.jumpTo({
+        center: center,
+        zoom: zoom,
+        bearing: bearing,
+        pitch: pitch
+      });
+      
+      // Re-add markers if they exist
+      if (pointA && markerA) {
+        markerA.remove();
+        markerA = addMarker(pointA, '#ff3333', labelA);
+      }
+      if (pointB && markerB) {
+        markerB.remove();
+        markerB = addMarker(pointB, '#33aaff', labelB);
+      }
+    });
+  } catch (error) {
+    console.error('Error loading map style:', error);
+  }
+}
+
 // Helper: Geocode using MapTiler API
 async function geocode(query) {
   const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=Ku1lF67CbFiT0fC3NUzQ`;
@@ -205,6 +263,7 @@ window.initMap = initMap;
 window.setPoint = setPoint;
 window.animatePan = animatePan;
 window.setMapColors = setMapColors;
+window.changeMapStyle = changeMapStyle;
 
 // Connect UI controls
 window.addEventListener('DOMContentLoaded', () => {
@@ -538,6 +597,17 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('openOutput').onclick = () => {
         window.open('output.html', 'EM OUTPUT');
       };
+
+      // Map style radio buttons (add after map is created)
+      const styleRadios = document.querySelectorAll('input[name="mapStyle"]');
+      styleRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            console.log('Changing style to:', e.target.value); // Debug log
+            changeMapStyle(e.target.value);
+          }
+        });
+      });
 
       // Map click to set points
       map.on('click', (e) => {
