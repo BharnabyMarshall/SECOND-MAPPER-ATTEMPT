@@ -55,7 +55,9 @@ const mapStyles = {
   positron: 'positron.json',
   snazzy: 'snazzy-style.json',
   google: 'google-style.json',
-  satellite: 'google-satellite-style.json'
+  satellite: 'google-satellite-style.json',
+  'esri-satellite': 'esri-satellite-style.json',
+  'cached-satellite': 'google-satellite-cached-style.json'
 };
 
 let map;
@@ -491,12 +493,16 @@ window.addEventListener('DOMContentLoaded', () => {
       // BroadcastChannel for EM OUTPUT sync
       const channel = new BroadcastChannel('em-map-sync');
 
+      // Initialize animation tile preloader
+      const preloader = new AnimationTilePreloader();
+
       // CUE button: jump to first frame (pointA) and hold, and sync to output
-      document.getElementById('cueBtn').onclick = () => {
+      document.getElementById('cueBtn').onclick = async () => {
         if (modeSimpleZoom.checked) {
           if (simpleZoomTarget && typeof simpleZoomLevel === 'number') {
-            // Enable Animate button after CUE is pressed
-            animateBtn.disabled = false;
+            // Disable Animate button while pre-caching
+            animateBtn.disabled = true;
+            
             // Always use the last user-set zoom, never accumulate
             // Only update simpleZoomLevel if the user has changed the zoom since last cue/animate
             // Prevent CUE from ever causing cumulative zoom out
@@ -512,6 +518,24 @@ window.addEventListener('DOMContentLoaded', () => {
             const startZoom = simpleZoomLevel - simpleZoomOutSteps;
             ignoreNextZoomend = true;
             map.flyTo({ center: simpleZoomTarget, zoom: startZoom, duration: 2000 });
+            
+            // Pre-cache tiles for zoom animation if using cached satellite
+            if (preloader.isUsingCachedSatellite()) {
+              console.log('🔍 Starting zoom pre-cache...');
+              await preloader.precacheZoomAnimation(
+                simpleZoomTarget[1], // lat
+                simpleZoomTarget[0], // lng
+                startZoom,
+                simpleZoomLevel
+              );
+              console.log('🔍 Zoom pre-cache complete');
+            } else {
+              console.log('❌ Skipping zoom pre-cache - cached satellite:', preloader.isUsingCachedSatellite());
+            }
+            
+            // Enable Animate button after pre-caching is complete
+            animateBtn.disabled = false;
+            
             channel.postMessage({
               type: 'cue',
               center: simpleZoomTarget,
@@ -522,12 +546,30 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         } else {
           if (pointA) {
-            // Enable Animate button after CUE is pressed
-            animateBtn.disabled = false;
+            // Disable Animate button while pre-caching
+            animateBtn.disabled = true;
+            
             const zoom = map.getZoom();
             const bearing = map.getBearing();
             const pitch = map.getPitch();
             map.jumpTo({ center: pointA, zoom, bearing, pitch });
+            
+            // Pre-cache tiles for point-to-point animation if using cached satellite
+            if (pointB && preloader.isUsingCachedSatellite()) {
+              console.log('🎬 Starting point-to-point pre-cache...');
+              await preloader.precachePointToPoint(
+                pointA[1], pointA[0], // from lat, lng
+                pointB[1], pointB[0], // to lat, lng
+                zoom
+              );
+              console.log('🎬 Point-to-point pre-cache complete');
+            } else {
+              console.log('❌ Skipping pre-cache - pointB:', pointB, 'cached satellite:', preloader.isUsingCachedSatellite());
+            }
+            
+            // Enable Animate button after pre-caching is complete
+            animateBtn.disabled = false;
+            
             channel.postMessage({
               type: 'cue',
               center: pointA,

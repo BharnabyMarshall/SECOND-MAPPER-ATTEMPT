@@ -134,6 +134,7 @@
           <label>Animation Time (seconds): <input id="animTime" type="number" value="2" min="0.1" max="10" step="0.1"></label>
           <button id="cueBtn">CUE</button>
           <button id="animateBtn">Animate</button>
+          <span id="preloadStatus" style="margin-left: 10px; color: #4CAF50; display: none;">📦 Pre-caching tiles...</span>
         </div>
         <div class="row">
           <button id="openOutput">Open Output Tab</button>
@@ -148,7 +149,11 @@
           <input type="radio" name="mapStyle" id="styleGoogle" value="google">
           <label for="styleGoogle">Google Maps</label>
           <input type="radio" name="mapStyle" id="styleSatellite" value="satellite">
-          <label for="styleSatellite">Satellite</label>
+          <label for="styleSatellite">Google Sat</label>
+          <input type="radio" name="mapStyle" id="styleEsriSat" value="esri-satellite">
+          <label for="styleEsriSat">ESRI Sat</label>
+          <input type="radio" name="mapStyle" id="styleCachedSat" value="cached-satellite">
+          <label for="styleCachedSat">Cached Sat</label>
         </div>
         <div class="row">
           <button id="settingsBtn">Settings</button>
@@ -175,6 +180,7 @@
       <div id="map"></div>
     </div>
     <!-- <script type="module" src="/src/main.js"></script> -->
+    <script src="animation-preloader.js"></script>
     <script type="module" src="maplibre-map.js"></script>
   </body>
 </html>
