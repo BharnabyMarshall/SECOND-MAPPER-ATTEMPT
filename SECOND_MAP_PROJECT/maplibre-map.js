@@ -57,7 +57,7 @@ const mapStyles = {
   google: 'google-style.json',
   satellite: 'google-satellite-style.json',
   'esri-satellite': 'esri-satellite-style.json',
-  'cached-satellite': 'google-satellite-cached-style.json'
+  'cached-satellite': 'google-satellite-cached-style.json' // This actually serves ESRI cached tiles from localhost:8001
 };
 
 let map;
@@ -77,9 +77,9 @@ function initMap() {
       map = new maplibregl.Map({
         container: 'map',
         style: style,
-        // Center on Northern Europe (approximate: longitude 15, latitude 60)
-        center: [15, 60],
-        zoom: 2.5, // Zoomed out by about 2 steps from previous default
+        // Center on custom position (longitude 1.1481, latitude 52.0597)
+        center: [1.1481, 52.0597],
+        zoom: 6.4,
         attributionControl: false,
         // Optimize for smooth animation
         renderWorldCopies: false,
@@ -314,15 +314,21 @@ window.addEventListener('DOMContentLoaded', () => {
   modePointToPoint.addEventListener('change', updateAnimModeUI);
   modeSimpleZoom.addEventListener('change', updateAnimModeUI);
   updateAnimModeUI();
-  fetch('positron.json')
+  
+  // Get the default checked map style
+  const checkedStyle = document.querySelector('input[name="mapStyle"]:checked');
+  const defaultStyleKey = checkedStyle ? checkedStyle.value : 'positron';
+  const defaultStyleFile = mapStyles[defaultStyleKey] || 'positron.json';
+  
+  fetch(defaultStyleFile)
     .then(response => response.json())
     .then(style => {
       map = new maplibregl.Map({
         container: 'map',
         style: style,
-        // Center on Northern Europe (approximate: longitude 15, latitude 60)
-        center: [15, 60],
-        zoom: 4.5,
+        // Center on custom position (longitude 1.1481, latitude 52.0597)
+        center: [1.1481, 52.0597],
+        zoom: 6.4,
         attributionControl: false
       });
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
