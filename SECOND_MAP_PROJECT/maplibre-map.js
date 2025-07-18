@@ -70,8 +70,8 @@ let simpleZoomLevel = 8;
 const simpleZoomOutSteps = 2;
 
 function initMap() {
-  // Load the positron style JSON dynamically
-  fetch('positron.json')
+  // Load the cached satellite style for smooth animation by default
+  fetch('google-satellite-cached-style.json')
     .then(response => response.json())
     .then(style => {
       map = new maplibregl.Map({
@@ -80,9 +80,30 @@ function initMap() {
         // Center on Northern Europe (approximate: longitude 15, latitude 60)
         center: [15, 60],
         zoom: 2.5, // Zoomed out by about 2 steps from previous default
-        attributionControl: false
+        attributionControl: false,
+        // Optimize for smooth animation
+        renderWorldCopies: false,
+        maxTileCacheSize: 2000,
+        fadeInTiles: false,
+        crossSourceCollisions: false
       });
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+      // Update zoom level display on map load and zoom changes
+      map.on('load', () => {
+        const zoomLevelElement = document.getElementById('zoomLevel');
+        if (zoomLevelElement) {
+          zoomLevelElement.textContent = Math.round(map.getZoom() * 10) / 10;
+        }
+      });
+
+      // Update zoom display on zoom changes
+      map.on('zoom', () => {
+        const zoomLevelElement = document.getElementById('zoomLevel');
+        if (zoomLevelElement) {
+          zoomLevelElement.textContent = Math.round(map.getZoom() * 10) / 10;
+        }
+      });
 
       // --- Ensure Simple Zoom end zoom is always updated on zoom change ---
       let lastZoomSetByUser = null;
@@ -305,6 +326,23 @@ window.addEventListener('DOMContentLoaded', () => {
         attributionControl: false
       });
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+      // Update zoom level display on map load and zoom changes
+      map.on('load', () => {
+        const zoomLevelElement = document.getElementById('zoomLevel');
+        if (zoomLevelElement) {
+          zoomLevelElement.textContent = Math.round(map.getZoom() * 10) / 10;
+        }
+      });
+
+      // Update zoom display on zoom changes
+      map.on('zoom', () => {
+        const zoomLevelElement = document.getElementById('zoomLevel');
+        if (zoomLevelElement) {
+          zoomLevelElement.textContent = Math.round(map.getZoom() * 10) / 10;
+        }
+      });
+
       // Keep Point A marker in sync during map moves
       map.on('move', keepMarkerAInSync);
 
@@ -588,8 +626,22 @@ window.addEventListener('DOMContentLoaded', () => {
           if (simpleZoomTarget && typeof simpleZoomLevel === 'number') {
             const startZoom = getSimpleZoomStart();
             ignoreNextZoomend = true;
+            console.log('🎬 Starting smooth zoom animation with cached tiles');
             map.flyTo({ center: simpleZoomTarget, zoom: startZoom, duration: 2000 });
-            map.flyTo({ center: simpleZoomTarget, zoom: simpleZoomLevel, duration: animTime });
+            
+            // Wait for initial positioning, then start smooth zoom
+            setTimeout(() => {
+              map.flyTo({ 
+                center: simpleZoomTarget, 
+                zoom: simpleZoomLevel, 
+                duration: animTime,
+                essential: true,
+                easing(t) {
+                  // Use smoother easing function for better animation
+                  return t * t * (3.0 - 2.0 * t);
+                }
+              });
+            }, 2100); // Wait for initial positioning to complete
             channel.postMessage({
               type: 'animate',
               animTime,
@@ -610,8 +662,21 @@ window.addEventListener('DOMContentLoaded', () => {
             const zoom = map.getZoom();
             const bearing = map.getBearing();
             const pitch = map.getPitch();
+            console.log('🎬 Starting smooth animation with cached tiles');
             map.flyTo({ center: pointA, zoom, bearing, pitch, duration: 2000 });
-            map.flyTo({ center: pointB, duration: animTime });
+            
+            // Wait for initial positioning, then start smooth animation
+            setTimeout(() => {
+              map.flyTo({ 
+                center: pointB, 
+                duration: animTime,
+                essential: true,
+                easing(t) {
+                  // Use smoother easing function for better animation
+                  return t * t * (3.0 - 2.0 * t);
+                }
+              });
+            }, 2100); // Wait for initial positioning to complete
             channel.postMessage({
               type: 'animate',
               animTime,
@@ -648,6 +713,11 @@ window.addEventListener('DOMContentLoaded', () => {
           if (e.target.checked) {
             console.log('Changing style to:', e.target.value); // Debug log
             changeMapStyle(e.target.value);
+            // Sync style change to output window for smooth animation
+            channel.postMessage({
+              type: 'changeStyle',
+              styleName: e.target.value
+            });
           }
         });
       });

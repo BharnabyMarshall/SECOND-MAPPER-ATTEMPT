@@ -15,7 +15,7 @@ import url from 'url';
 // Disable SSL certificate validation for development
 process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
 
-const CACHE_DIR = './tile-cache';
+const CACHE_DIR = path.join(path.dirname(new URL(import.meta.url).pathname), 'tile-cache');
 const PORT = 8001;
 
 // Ensure cache directory exists
@@ -30,11 +30,7 @@ const TILE_SOURCES = {
 };
 
 function getTilePath(source, z, x, y) {
-    // For ESRI, we need to store tiles using the same coordinate swap as downloads
-    if (source === 'esri-satellite') {
-        // Store as y/x instead of x/y to match ESRI coordinate system
-        return path.join(CACHE_DIR, source, z.toString(), y.toString(), `${x}.png`);
-    }
+    // Store all tiles using standard x/y format
     return path.join(CACHE_DIR, source, z.toString(), x.toString(), `${y}.png`);
 }
 
@@ -76,15 +72,7 @@ function buildTileUrl(source, z, x, y) {
         template = template.replace('{s}', server.toString());
     }
     
-    // ESRI uses {z}/{y}/{x} format, but we receive requests as {z}/{x}/{y}
-    // So we need to swap x and y for ESRI
-    if (source === 'esri-satellite') {
-        return template
-            .replace('{z}', z)
-            .replace('{x}', y)  // ESRI x gets our y
-            .replace('{y}', x); // ESRI y gets our x
-    }
-    
+    // ESRI uses standard {z}/{x}/{y} format
     return template
         .replace('{z}', z)
         .replace('{x}', x)
@@ -95,10 +83,50 @@ const server = http.createServer(async (req, res) => {
     const parsedUrl = url.parse(req.url, true);
     const pathname = parsedUrl.pathname;
     
-    // CORS headers
+    // CORS headers for faster loading
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+    res.setHeader('Expires', new Date(Date.now() + 31536000000).toUTCString());
+    
+    // Handle preflight OPTIONS requests
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+    
+    // Handle HEAD requests for cache checking
+    if (req.method === 'HEAD') {
+        // Parse tile request: /source/z/x/y.png
+        const match = pathname.match(/^\/([^\/]+)\/(\d+)\/(\d+)\/(\d+)\.png$/);
+        if (!match) {
+            res.writeHead(404);
+            res.end();
+            return;
+        }
+        
+        const [, source, z, x, y] = match;
+        const filePath = getTilePath(source, z, x, y);
+        
+        if (fs.existsSync(filePath)) {
+            res.setHeader('Content-Type', 'image/png');
+            res.writeHead(200);
+            res.end();
+        } else {
+            res.writeHead(404);
+            res.end();
+        }
+        return;
+    }
+    
+    // Handle root path for server test
+    if (pathname === '/') {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('Tile cache server is running');
+        return;
+    }
     
     // Parse tile request: /source/z/x/y.png
     const match = pathname.match(/^\/([^\/]+)\/(\d+)\/(\d+)\/(\d+)\.png$/);
@@ -110,22 +138,17 @@ const server = http.createServer(async (req, res) => {
     
     const [, source, z, x, y] = match;
     
-    // For ESRI, we need to swap x and y coordinates in the request to match storage
-    let filePath;
-    if (source === 'esri-satellite') {
-        filePath = getTilePath(source, z, y, x); // Swap x and y for ESRI
-    } else {
-        filePath = getTilePath(source, z, x, y);
-    }
+    // Use standard coordinate system for all sources
+    const filePath = getTilePath(source, z, x, y);
     
     // Check if tile is cached
     if (fs.existsSync(filePath)) {
-        console.log(`Serving cached: ${filePath}`);
+        console.log(`✓ Serving cached: ${source}/${z}/${x}/${y}`);
         res.setHeader('Content-Type', 'image/png');
         fs.createReadStream(filePath).pipe(res);
         return;
     }
-    
+
     // Download and cache tile
     try {
         const tileUrl = buildTileUrl(source, z, x, y);
@@ -134,11 +157,9 @@ const server = http.createServer(async (req, res) => {
             res.end('Unknown tile source');
             return;
         }
-        
-        console.log(`Downloading: ${tileUrl}`);
-        await downloadTile(tileUrl, filePath);
-        
-        // Serve the downloaded tile
+
+        console.log(`⬇ Downloading: ${source}/${z}/${x}/${y} from ${tileUrl}`);
+        await downloadTile(tileUrl, filePath);        // Serve the downloaded tile
         res.setHeader('Content-Type', 'image/png');
         fs.createReadStream(filePath).pipe(res);
         

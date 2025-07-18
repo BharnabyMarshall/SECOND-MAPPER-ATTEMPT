@@ -9,26 +9,22 @@
     "cached-satellite": {
       "type": "raster",
       "tiles": [
-        "http://localhost:8001/esri-satellite/{z}/{y}/{x}.png"
+        "http://localhost:8001/esri-satellite/{z}/{x}/{y}.png"
       ],
       "tileSize": 256,
       "attribution": "© ESRI (Cached)",
       "maxzoom": 18,
-      "scheme": "xyz"
-    },
-    "openmaptiles": {
-      "type": "vector",
-      "url": "https://api.maptiler.com/tiles/v3/tiles.json?key=mTauVrXF22hFSJJ8MDcT"
+      "minzoom": 0,
+      "scheme": "xyz",
+      "bounds": [-180, -85.0511, 180, 85.0511]
     }
   },
-  "sprite": "https://api.maptiler.com/maps/streets/sprite",
-  "glyphs": "https://api.maptiler.com/fonts/{fontstack}/{range}.pbf?key=mTauVrXF22hFSJJ8MDcT",
   "layers": [
     {
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#000000"
+        "background-color": "#4a5548"
       }
     },
     {
@@ -37,30 +33,6 @@
       "source": "cached-satellite",
       "minzoom": 0,
       "maxzoom": 18
-    },
-    {
-      "id": "country-borders",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "admin",
-      "filter": ["==", "admin_level", 2],
-      "paint": {
-        "line-color": "#ffffff",
-        "line-opacity": 0.7,
-        "line-width": 1.5
-      }
-    },
-    {
-      "id": "state-borders",
-      "type": "line",
-      "source": "openmaptiles",
-      "source-layer": "admin",
-      "filter": ["==", "admin_level", 4],
-      "paint": {
-        "line-color": "#ffffff",
-        "line-opacity": 0.5,
-        "line-width": 0.8
-      }
     }
   ]
 }

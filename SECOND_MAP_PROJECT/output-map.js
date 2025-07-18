@@ -10,6 +10,7 @@ let pointA = null;
 let pointB = null;
 let labelA = '';
 let labelB = '';
+let currentStyle = 'google-satellite-cached-style.json'; // Default to cached satellite for smooth animation
 
 function addMarker(coord, color, label) {
   const container = document.createElement('div');
@@ -84,13 +85,52 @@ function cue(center, zoom, bearing, pitch) {
 
 function animate(animTime, from, to, zoom, bearing, pitch) {
   if (from && to) {
+    console.log('🎬 Starting animation with cached tiles for smooth playback');
+    
+    // Pre-position the map and wait for tiles to load
     map.jumpTo({ center: from, zoom, bearing, pitch });
-    map.flyTo({ center: to, duration: animTime });
+    
+    // Wait longer for tiles to fully load before starting animation
+    setTimeout(() => {
+      map.flyTo({ 
+        center: to, 
+        duration: animTime,
+        essential: true, // Ensures animation completes
+        easing(t) {
+          // Use a smoother easing function for better animation
+          return t * t * (3.0 - 2.0 * t);
+        }
+      });
+    }, 2100); // Match the control window timing
   }
 }
 
+function changeStyle(styleName) {
+  const styleMap = {
+    'cached-satellite': 'google-satellite-cached-style.json',
+    'google-satellite': 'google-satellite-style.json',
+    'google': 'google-style.json',
+    'custom': 'custom-style.json',
+    'snazzy': 'snazzy-style.json',
+    'positron': 'positron.json'
+  };
+  
+  const styleFile = styleMap[styleName] || 'google-satellite-cached-style.json';
+  console.log('🎨 Output window changing style to:', styleName, '->', styleFile);
+  
+  fetch(styleFile)
+    .then(response => response.json())
+    .then(style => {
+      map.setStyle(style);
+      currentStyle = styleFile;
+    })
+    .catch(error => {
+      console.error('❌ Error loading style:', error);
+    });
+}
+
 window.addEventListener('DOMContentLoaded', () => {
-  fetch('custom-style.json')
+  fetch(currentStyle) // Use cached satellite style by default
     .then(response => response.json())
     .then(style => {
       map = new maplibregl.Map({
@@ -98,7 +138,31 @@ window.addEventListener('DOMContentLoaded', () => {
         style: style,
         center: [0, 0],
         zoom: 2,
-        attributionControl: false
+        attributionControl: false,
+        // Add smooth animation settings for seamless tile display
+        renderWorldCopies: false,
+        maxTileCacheSize: 2000, // Increased cache size
+        localIdeographFontFamily: false,
+        // Optimize tile loading for smooth animation
+        maxPitch: 60,
+        maxZoom: 22,
+        minZoom: 0,
+        hash: false,
+        // Prevent tile flickering during animation
+        fadeInTiles: false,
+        crossSourceCollisions: false
+      });
+
+      // Add event listeners for better tile management
+      map.on('style.load', () => {
+        console.log('🎨 Output map style loaded successfully');
+      });
+
+      map.on('sourcedata', (e) => {
+        // Ensure tiles are loaded before allowing smooth animation
+        if (e.sourceId && e.isSourceLoaded) {
+          console.log('📦 Tiles loaded for source:', e.sourceId);
+        }
       });
 
       // Listen for control messages from EM CONTROL
@@ -111,6 +175,8 @@ window.addEventListener('DOMContentLoaded', () => {
           cue(msg.center, msg.zoom, msg.bearing, msg.pitch);
         } else if (msg.type === 'animate') {
           animate(msg.animTime, msg.from, msg.to, msg.zoom, msg.bearing, msg.pitch);
+        } else if (msg.type === 'changeStyle') {
+          changeStyle(msg.styleName);
         }
       };
     });

@@ -1,0 +1,11 @@
+{
+  "name": "map-tile-cache",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Map tile caching server for smooth animations",
+  "main": "tile-cache-server.js",
+  "scripts": {
+    "start": "node tile-cache-server.js",
+    "preload": "node preload-cache.js"
+  }
+}

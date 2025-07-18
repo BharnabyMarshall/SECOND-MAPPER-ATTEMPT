@@ -29,11 +29,8 @@ class AnimationTilePreloader {
     latLngToTile(lat, lng, zoom) {
         const latRad = lat * Math.PI / 180;
         const x = Math.floor((lng + 180) / 360 * Math.pow(2, zoom));
-        // Flip y for web mercator tiles (origin top-left)
-        const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, zoom));
-        // For ESRI/MapLibre, y is usually flipped: y = (2^z - 1 - y)
-        const yFlipped = Math.pow(2, zoom) - 1 - y;
-        return { x, y: yFlipped, z: zoom };
+        const y = Math.floor((1 - Math.asinh(Math.tan(latRad)) / Math.PI) / 2 * Math.pow(2, zoom));
+        return { x, y, z: zoom };
     }
 
     // Get tiles around a point with buffer
@@ -91,13 +88,8 @@ class AnimationTilePreloader {
     // Check if tile already exists in cache
     async checkCachedTile(z, x, y, source) {
         try {
-            // Swap x and y for esri-satellite requests
-            let url;
-            if (source === 'esri-satellite') {
-                url = `http://localhost:8001/${source}/${z}/${y}/${x}.png`;
-            } else {
-                url = `http://localhost:8001/${source}/${z}/${x}/${y}`;
-            }
+            // Use standard x,y format for all sources since the map style now uses {z}/{x}/{y}
+            const url = `http://localhost:8001/${source}/${z}/${x}/${y}.png`;
             const response = await fetch(url, {
                 method: 'HEAD'
             });
@@ -110,19 +102,25 @@ class AnimationTilePreloader {
     // Pre-cache a single tile
     async cacheTile(z, x, y, source) {
         try {
-            // Swap x and y for esri-satellite requests
-            let url;
-            if (source === 'esri-satellite') {
-                url = `http://localhost:8001/${source}/${z}/${y}/${x}.png`;
-            } else {
-                url = `http://localhost:8001/${source}/${z}/${x}/${y}`;
+            // First check if tile is already cached using HEAD request
+            const url = `http://localhost:8001/${source}/${z}/${x}/${y}.png`;
+            
+            // Check if already cached
+            const headResponse = await fetch(url, { method: 'HEAD' });
+            if (headResponse.ok) {
+                // Already cached, don't need to re-download
+                if (Math.random() < 0.05) { // Log ~5% of cached tiles
+                    console.log(`✓ Already cached: ${z}/${x}/${y}`);
+                }
+                return true;
             }
-            // Always try to fetch the tile - the server will serve from cache if available
+            
+            // Not cached, request it (this will download and cache)
             const response = await fetch(url);
             if (response.ok) {
                 // Log successful cache - but don't spam too much
-                if (Math.random() < 0.1) { // Log ~10% of successful tiles
-                    console.log(`✓ Cached tile ${z}/${x}/${y} (status: ${response.status})`);
+                if (Math.random() < 0.1) { // Log ~10% of new downloads
+                    console.log(`✓ Downloaded & cached: ${z}/${x}/${y} (status: ${response.status})`);
                 }
                 return true;
             } else {
