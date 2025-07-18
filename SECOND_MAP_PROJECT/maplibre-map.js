@@ -425,18 +425,32 @@ window.addEventListener('DOMContentLoaded', () => {
       };
       mapSize.onchange = () => {
         const val = mapSize.value;
-        if (val === '1920x1080') {
-          mapDiv.style.width = '1920px';
-          mapDiv.style.height = '1080px';
-        } else if (val === '3840x2160') {
-          mapDiv.style.width = '3840px';
-          mapDiv.style.height = '2160px';
-        }
-        map.resize();
+        // Don't change EM CONTROL window size - only sync to EM OUTPUT
+        // if (val === '1920x1080') {
+        //   mapDiv.style.width = '1920px';
+        //   mapDiv.style.height = '1080px';
+        // } else if (val === '3840x2160') {
+        //   mapDiv.style.width = '3840px';
+        //   mapDiv.style.height = '2160px';
+        // }
+        // map.resize();
+        
+        // Sync resolution change to EM OUTPUT only
+        channel.postMessage({
+          type: 'changeResolution',
+          resolution: val
+        });
+        console.log('📺 Resolution setting sent to EM OUTPUT:', val);
       };
       frameRate.onchange = () => {
         currentFrameRate = parseInt(frameRate.value, 10);
-        // You can use currentFrameRate elsewhere for animation, export, etc.
+        
+        // Sync frame rate change to EM OUTPUT only
+        channel.postMessage({
+          type: 'changeFrameRate',
+          frameRate: currentFrameRate
+        });
+        console.log('🎬 Frame rate setting sent to EM OUTPUT:', currentFrameRate, 'fps');
       };
 
       // Zoom level inputs for Point A and Point B
@@ -625,6 +639,22 @@ window.addEventListener('DOMContentLoaded', () => {
           type: 'changeStyle',
           styleName: defaultStyleKey
         });
+        
+        // Send initial settings sync
+        const currentMapSize = document.getElementById('mapSize').value;
+        const currentFrameRateValue = parseInt(document.getElementById('frameRate').value, 10) || 25;
+        
+        if (currentMapSize) {
+          channel.postMessage({
+            type: 'changeResolution',
+            resolution: currentMapSize
+          });
+        }
+        
+        channel.postMessage({
+          type: 'changeFrameRate',
+          frameRate: currentFrameRateValue
+        });
       }, 100); // Small delay to ensure output window is ready
 
       // Initialize animation tile preloader
@@ -804,6 +834,21 @@ window.addEventListener('DOMContentLoaded', () => {
       // Open Output Tab button
       document.getElementById('openOutput').onclick = () => {
         window.open('output.html', 'EM OUTPUT');
+      };
+
+      // Remote recording control buttons
+      document.getElementById('startRecordRemote').onclick = () => {
+        channel.postMessage({ type: 'startRecording' });
+        document.getElementById('startRecordRemote').disabled = true;
+        document.getElementById('stopRecordRemote').disabled = false;
+        console.log('🎥 Recording start command sent to EM OUTPUT');
+      };
+
+      document.getElementById('stopRecordRemote').onclick = () => {
+        channel.postMessage({ type: 'stopRecording' });
+        document.getElementById('startRecordRemote').disabled = false;
+        document.getElementById('stopRecordRemote').disabled = true;
+        console.log('🎥 Recording stop command sent to EM OUTPUT');
       };
 
       // Map style radio buttons (add after map is created)

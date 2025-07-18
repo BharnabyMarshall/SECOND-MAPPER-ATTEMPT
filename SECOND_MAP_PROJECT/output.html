@@ -28,10 +28,79 @@
       background: #222;
       position: relative;
     }
+    
+    /* Recording controls */
+    #recordingControls {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid #555;
+      border-radius: 5px;
+      padding: 10px;
+      color: white;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      z-index: 1000;
+      display: none;
+    }
+    
+    #recordingControls.show {
+      display: block;
+    }
+    
+    #recordingStatus {
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    
+    #recordingStatus.recording {
+      color: #ff4444;
+    }
+    
+    .record-btn {
+      background: #444;
+      border: 1px solid #666;
+      color: white;
+      padding: 5px 10px;
+      margin: 2px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    
+    .record-btn:hover {
+      background: #555;
+    }
+    
+    .record-btn:disabled {
+      background: #222;
+      color: #666;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  
+  <!-- Recording Controls -->
+  <div id="recordingControls">
+    <div id="recordingStatus">Ready to Record</div>
+    <div>
+      <label>Format:</label>
+      <select id="videoFormat" class="record-btn">
+        <option value="video/webm;codecs=vp9">WebM (VP9)</option>
+        <option value="video/webm;codecs=vp8">WebM (VP8)</option>
+        <option value="video/mp4;codecs=h264">MP4 (H.264)</option>
+        <option value="video/mp4">MP4 (Default)</option>
+      </select>
+    </div>
+    <div>
+      <button id="startRecord" class="record-btn">● Start Recording</button>
+      <button id="stopRecord" class="record-btn" disabled>■ Stop Recording</button>
+    </div>
+    <div id="recordingInfo" style="margin-top: 5px; font-size: 10px; color: #ccc;"></div>
+  </div>
   <script type="module" src="output-map.js"></script>
 </body>
 </html>
