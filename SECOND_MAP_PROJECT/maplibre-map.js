@@ -840,5 +840,22 @@ window.addEventListener('DOMContentLoaded', () => {
           document.getElementById('zoomB').value = currentZoom.toFixed(1);
         }
       });
+
+      // Global input event listeners for manual label editing
+      // Allow editing Point A label anytime, regardless of how the point was placed
+      document.getElementById('pointA').addEventListener('input', function() {
+        if (markerA && pointA) {
+          labelA = this.value; // Update the stored label
+          setPoint(pointA, 'A', this.value, zoomA); // Update the marker with new label
+        }
+      });
+
+      // Allow editing Point B label anytime, regardless of how the point was placed  
+      document.getElementById('pointB').addEventListener('input', function() {
+        if (markerB && pointB) {
+          labelB = this.value; // Update the stored label
+          setPoint(pointB, 'B', this.value, zoomB); // Update the marker with new label
+        }
+      });
     });
 });
