@@ -63,6 +63,8 @@ const mapStyles = {
 let map;
 let pointA = null;
 let pointB = null;
+let zoomA = 8; // Default zoom level for Point A
+let zoomB = 8; // Default zoom level for Point B
 
 // Simple Zoom state
 let simpleZoomTarget = null;
@@ -200,12 +202,14 @@ function setPoint(coord, which) {
   if (which === 'A') {
     pointA = coord;
     if (arguments.length > 2 && arguments[2]) labelA = arguments[2];
+    if (arguments.length > 3 && typeof arguments[3] === 'number') zoomA = arguments[3];
     if (markerA) markerA.remove();
     markerA = addMarker(coord, '#ff3333', labelA);
   }
   if (which === 'B') {
     pointB = coord;
     if (arguments.length > 2 && arguments[2]) labelB = arguments[2];
+    if (arguments.length > 3 && typeof arguments[3] === 'number') zoomB = arguments[3];
     if (markerB) markerB.remove();
     markerB = addMarker(coord, '#33aaff', labelB);
   }
@@ -347,6 +351,31 @@ window.addEventListener('DOMContentLoaded', () => {
         if (zoomLevelElement) {
           zoomLevelElement.textContent = Math.round(map.getZoom() * 10) / 10;
         }
+        
+        // Only update point zoom inputs if this is a user-initiated zoom change
+        // Don't update during programmatic changes like CUE or animation
+        if (!programmaticZoomChange) {
+          // Update the appropriate point's zoom level based on which radio is selected
+          const editARadio = document.getElementById('editA');
+          const editBRadio = document.getElementById('editB');
+          const zoomAInput = document.getElementById('zoomA');
+          const zoomBInput = document.getElementById('zoomB');
+          const currentZoom = map.getZoom();
+          
+          if (editARadio && editARadio.checked) {
+            // Point A is selected, update Point A zoom
+            zoomA = currentZoom;
+            if (zoomAInput) {
+              zoomAInput.value = currentZoom.toFixed(1);
+            }
+          } else if (editBRadio && editBRadio.checked) {
+            // Point B is selected, update Point B zoom
+            zoomB = currentZoom;
+            if (zoomBInput) {
+              zoomBInput.value = currentZoom.toFixed(1);
+            }
+          }
+        }
       });
 
       // Keep Point A marker in sync during map moves
@@ -355,6 +384,7 @@ window.addEventListener('DOMContentLoaded', () => {
       // --- Ensure Simple Zoom end zoom is always updated on zoom change ---
       let lastZoomSetByUser = null;
       let ignoreNextZoomend = false;
+      let programmaticZoomChange = false; // Flag to prevent zoom input updates during CUE/animation
       map.on('zoomstart', () => {
         if (modeSimpleZoom.checked && simpleZoomTarget) {
           lastZoomSetByUser = map.getZoom();
@@ -368,6 +398,8 @@ window.addEventListener('DOMContentLoaded', () => {
           }
           ignoreNextZoomend = false;
         }
+        // Reset the programmatic zoom flag after zoom operation completes
+        programmaticZoomChange = false;
       });
 
       // Helper for Simple Zoom: always use the saved zoom, not the current map zoom
@@ -406,6 +438,52 @@ window.addEventListener('DOMContentLoaded', () => {
         currentFrameRate = parseInt(frameRate.value, 10);
         // You can use currentFrameRate elsewhere for animation, export, etc.
       };
+
+      // Zoom level inputs for Point A and Point B
+      const zoomAInput = document.getElementById('zoomA');
+      const zoomBInput = document.getElementById('zoomB');
+      
+      zoomAInput.onchange = () => {
+        zoomA = parseFloat(zoomAInput.value);
+        // If Point A is selected, update the map zoom to match
+        const editARadio = document.getElementById('editA');
+        if (editARadio && editARadio.checked) {
+          programmaticZoomChange = true; // Prevent zoom input updates
+          map.setZoom(zoomA);
+        }
+      };
+      
+      zoomBInput.onchange = () => {
+        zoomB = parseFloat(zoomBInput.value);
+        // If Point B is selected, update the map zoom to match
+        const editBRadio = document.getElementById('editB');
+        if (editBRadio && editBRadio.checked) {
+          programmaticZoomChange = true; // Prevent zoom input updates
+          map.setZoom(zoomB);
+        }
+      };
+
+      // Point selection radio button handlers
+      const editARadio = document.getElementById('editA');
+      const editBRadio = document.getElementById('editB');
+      
+      editARadio.addEventListener('change', () => {
+        if (editARadio.checked) {
+          // When switching to Point A, set map zoom to Point A's zoom level
+          programmaticZoomChange = true; // Prevent zoom input updates
+          map.setZoom(zoomA);
+          zoomAInput.value = zoomA.toFixed(1);
+        }
+      });
+      
+      editBRadio.addEventListener('change', () => {
+        if (editBRadio.checked) {
+          // When switching to Point B, set map zoom to Point B's zoom level
+          programmaticZoomChange = true; // Prevent zoom input updates
+          map.setZoom(zoomB);
+          zoomBInput.value = zoomB.toFixed(1);
+        }
+      });
 
       // Point A search
       document.getElementById('searchA').onclick = async () => {
@@ -451,14 +529,16 @@ window.addEventListener('DOMContentLoaded', () => {
             const i = parseInt(idx, 10);
             if (!isNaN(i) && results[i]) {
               document.getElementById('pointA').value = results[i].place_name;
-              setPoint(results[i].center, 'A', results[i].place_name);
+              const searchZoom = 8; // Default zoom for search results
+              setPoint(results[i].center, 'A', results[i].place_name, searchZoom);
+              document.getElementById('zoomA').value = searchZoom;
               if (modeSimpleZoom.checked) {
                 // Center map on target, let user adjust zoom
                 map.flyTo({ center: results[i].center, duration: 2000 });
                 simpleZoomTarget = results[i].center;
                 simpleZoomLevel = map.getZoom(); // Will be updated by user
               } else {
-                map.flyTo({ center: results[i].center, zoom: 8, duration: 2000 });
+                map.flyTo({ center: results[i].center, zoom: searchZoom, duration: 2000 });
               }
               select.style.display = 'none';
             }
@@ -518,8 +598,10 @@ window.addEventListener('DOMContentLoaded', () => {
             const i = parseInt(idx, 10);
             if (!isNaN(i) && results[i]) {
               document.getElementById('pointB').value = results[i].place_name;
-              setPoint(results[i].center, 'B', results[i].place_name);
-              map.flyTo({ center: results[i].center, zoom: 8, duration: 2000 });
+              const searchZoom = 8; // Default zoom for search results
+              setPoint(results[i].center, 'B', results[i].place_name, searchZoom);
+              document.getElementById('zoomB').value = searchZoom;
+              map.flyTo({ center: results[i].center, zoom: searchZoom, duration: 2000 });
               select.style.display = 'none';
             }
           }
@@ -536,6 +618,14 @@ window.addEventListener('DOMContentLoaded', () => {
       // Animate
       // BroadcastChannel for EM OUTPUT sync
       const channel = new BroadcastChannel('em-map-sync');
+
+      // Send initial style sync to ensure EM OUTPUT matches EM CONTROL
+      setTimeout(() => {
+        channel.postMessage({
+          type: 'changeStyle',
+          styleName: defaultStyleKey
+        });
+      }, 100); // Small delay to ensure output window is ready
 
       // Initialize animation tile preloader
       const preloader = new AnimationTilePreloader();
@@ -561,6 +651,7 @@ window.addEventListener('DOMContentLoaded', () => {
             }
             const startZoom = simpleZoomLevel - simpleZoomOutSteps;
             ignoreNextZoomend = true;
+            programmaticZoomChange = true; // Prevent zoom input updates
             map.flyTo({ center: simpleZoomTarget, zoom: startZoom, duration: 2000 });
             
             // Pre-cache tiles for zoom animation if using cached satellite
@@ -593,10 +684,10 @@ window.addEventListener('DOMContentLoaded', () => {
             // Disable Animate button while pre-caching
             animateBtn.disabled = true;
             
-            const zoom = map.getZoom();
             const bearing = map.getBearing();
             const pitch = map.getPitch();
-            map.jumpTo({ center: pointA, zoom, bearing, pitch });
+            programmaticZoomChange = true; // Prevent zoom input updates
+            map.jumpTo({ center: pointA, zoom: zoomA, bearing, pitch });
             
             // Pre-cache tiles for point-to-point animation if using cached satellite
             if (pointB && preloader.isUsingCachedSatellite()) {
@@ -604,7 +695,7 @@ window.addEventListener('DOMContentLoaded', () => {
               await preloader.precachePointToPoint(
                 pointA[1], pointA[0], // from lat, lng
                 pointB[1], pointB[0], // to lat, lng
-                zoom
+                zoomA // Use Point A's zoom level
               );
               console.log('🎬 Point-to-point pre-cache complete');
             } else {
@@ -617,9 +708,9 @@ window.addEventListener('DOMContentLoaded', () => {
             channel.postMessage({
               type: 'cue',
               center: pointA,
-              zoom,
-              bearing,
-              pitch
+              zoom: zoomA,
+              bearing: map.getBearing(),
+              pitch: map.getPitch()
             });
           }
         }
@@ -632,6 +723,7 @@ window.addEventListener('DOMContentLoaded', () => {
           if (simpleZoomTarget && typeof simpleZoomLevel === 'number') {
             const startZoom = getSimpleZoomStart();
             ignoreNextZoomend = true;
+            programmaticZoomChange = true; // Prevent zoom input updates
             console.log('🎬 Starting smooth zoom animation with cached tiles');
             map.flyTo({ center: simpleZoomTarget, zoom: startZoom, duration: 2000 });
             
@@ -665,16 +757,17 @@ window.addEventListener('DOMContentLoaded', () => {
         } else {
           // Point to Point: normal A to B
           if (pointA && pointB) {
-            const zoom = map.getZoom();
             const bearing = map.getBearing();
             const pitch = map.getPitch();
+            programmaticZoomChange = true; // Prevent zoom input updates
             console.log('🎬 Starting smooth animation with cached tiles');
-            map.flyTo({ center: pointA, zoom, bearing, pitch, duration: 2000 });
+            map.flyTo({ center: pointA, zoom: zoomA, bearing, pitch, duration: 2000 });
             
             // Wait for initial positioning, then start smooth animation
             setTimeout(() => {
               map.flyTo({ 
-                center: pointB, 
+                center: pointB,
+                zoom: zoomB, // Animate to Point B's zoom level
                 duration: animTime,
                 essential: true,
                 easing(t) {
@@ -688,9 +781,10 @@ window.addEventListener('DOMContentLoaded', () => {
               animTime,
               from: pointA,
               to: pointB,
-              zoom,
-              bearing,
-              pitch
+              zoomA: zoomA,
+              zoomB: zoomB,
+              bearing: map.getBearing(),
+              pitch: map.getPitch()
             });
             // Disable Animate button after animation completes
             map.once('moveend', () => {
@@ -702,9 +796,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
       // Sync points/labels to output tab whenever setPoint is called
       const originalSetPoint = setPoint;
-      setPoint = function(coord, which, label) {
-        originalSetPoint(coord, which, label);
-        channel.postMessage({ type: 'setPoint', coord, which, label });
+      setPoint = function(coord, which, label, zoom) {
+        originalSetPoint(coord, which, label, zoom);
+        channel.postMessage({ type: 'setPoint', coord, which, label, zoom });
       };
 
       // Open Output Tab button
@@ -733,9 +827,18 @@ window.addEventListener('DOMContentLoaded', () => {
         const which = document.getElementById('editA').checked ? 'A' : 'B';
         const coords = [e.lngLat.lng, e.lngLat.lat];
         const label = `${e.lngLat.lat.toFixed(5)},${e.lngLat.lng.toFixed(5)}`;
-        setPoint(coords, which, label);
-        if (which === 'A') document.getElementById('pointA').value = label;
-        if (which === 'B') document.getElementById('pointB').value = label;
+        const currentZoom = map.getZoom();
+        
+        setPoint(coords, which, label, currentZoom);
+        
+        if (which === 'A') {
+          document.getElementById('pointA').value = label;
+          document.getElementById('zoomA').value = currentZoom.toFixed(1);
+        }
+        if (which === 'B') {
+          document.getElementById('pointB').value = label;
+          document.getElementById('zoomB').value = currentZoom.toFixed(1);
+        }
       });
     });
 });

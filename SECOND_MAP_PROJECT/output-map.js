@@ -10,7 +10,7 @@ let pointA = null;
 let pointB = null;
 let labelA = '';
 let labelB = '';
-let currentStyle = 'google-satellite-cached-style.json'; // Default to cached satellite for smooth animation
+let currentStyle = 'positron.json'; // Default to positron to match control map
 
 function addMarker(coord, color, label) {
   const container = document.createElement('div');
@@ -83,25 +83,51 @@ function cue(center, zoom, bearing, pitch) {
   }
 }
 
-function animate(animTime, from, to, zoom, bearing, pitch) {
-  if (from && to) {
+function animate(animTime, from, to, zoomA, zoomB, bearing, pitch) {
+  if (from) {
     console.log('🎬 Starting animation with cached tiles for smooth playback');
     
-    // Pre-position the map and wait for tiles to load
-    map.jumpTo({ center: from, zoom, bearing, pitch });
+    // Check if this is a simple zoom animation (same from/to coordinates)
+    const isSimpleZoom = to && from[0] === to[0] && from[1] === to[1];
     
-    // Wait longer for tiles to fully load before starting animation
-    setTimeout(() => {
-      map.flyTo({ 
-        center: to, 
-        duration: animTime,
-        essential: true, // Ensures animation completes
-        easing(t) {
-          // Use a smoother easing function for better animation
-          return t * t * (3.0 - 2.0 * t);
-        }
-      });
-    }, 2100); // Match the control window timing
+    if (isSimpleZoom) {
+      // Simple zoom animation: start at lower zoom, animate to higher zoom
+      const startZoom = Math.min(zoomA || 8, zoomB || 8);
+      const endZoom = Math.max(zoomA || 8, zoomB || 8);
+      
+      // Pre-position the map at start zoom
+      map.jumpTo({ center: from, zoom: startZoom, bearing, pitch });
+      
+      // Wait briefly for tiles to load before starting zoom animation
+      setTimeout(() => {
+        map.flyTo({ 
+          center: from, // Stay at same location
+          zoom: endZoom, // Zoom to end level
+          duration: animTime,
+          essential: true,
+          easing(t) {
+            return t * t * (3.0 - 2.0 * t);
+          }
+        });
+      }, 200);
+    } else if (to) {
+      // Point-to-point animation
+      map.jumpTo({ center: from, zoom: zoomA || 8, bearing, pitch });
+      
+      // Wait briefly for tiles to fully load before starting animation
+      setTimeout(() => {
+        map.flyTo({ 
+          center: to,
+          zoom: zoomB || 8, // Animate to Point B's zoom level
+          duration: animTime,
+          essential: true, // Ensures animation completes
+          easing(t) {
+            // Use a smoother easing function for better animation
+            return t * t * (3.0 - 2.0 * t);
+          }
+        });
+      }, 200); // Reduced delay for immediate EM OUTPUT playback
+    }
   }
 }
 
@@ -109,23 +135,61 @@ function changeStyle(styleName) {
   const styleMap = {
     'cached-satellite': 'google-satellite-cached-style.json',
     'google-satellite': 'google-satellite-style.json',
+    'esri-satellite': 'esri-satellite-style.json',
     'google': 'google-style.json',
     'custom': 'custom-style.json',
     'snazzy': 'snazzy-style.json',
     'positron': 'positron.json'
   };
   
-  const styleFile = styleMap[styleName] || 'google-satellite-cached-style.json';
+  const styleFile = styleMap[styleName] || 'positron.json'; // Default to positron to match control
   console.log('🎨 Output window changing style to:', styleName, '->', styleFile);
   
+  if (!map) {
+    console.warn('⚠️ Map not ready, storing style for later application');
+    currentStyle = styleFile;
+    return;
+  }
+  
   fetch(styleFile)
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
     .then(style => {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      const bearing = map.getBearing();
+      const pitch = map.getPitch();
+      
       map.setStyle(style);
       currentStyle = styleFile;
+      
+      // Wait for style to load, then restore map state and markers
+      map.once('style.load', () => {
+        map.jumpTo({
+          center: center,
+          zoom: zoom,
+          bearing: bearing,
+          pitch: pitch
+        });
+        
+        // Re-add markers if they exist
+        if (pointA && markerA) {
+          markerA.remove();
+          markerA = addMarker(pointA, '#ff3333', labelA);
+        }
+        if (pointB && markerB) {
+          markerB.remove();
+          markerB = addMarker(pointB, '#33aaff', labelB);
+        }
+      });
     })
     .catch(error => {
       console.error('❌ Error loading style:', error);
+      // Keep current style on error
     });
 }
 
@@ -174,7 +238,10 @@ window.addEventListener('DOMContentLoaded', () => {
         } else if (msg.type === 'cue') {
           cue(msg.center, msg.zoom, msg.bearing, msg.pitch);
         } else if (msg.type === 'animate') {
-          animate(msg.animTime, msg.from, msg.to, msg.zoom, msg.bearing, msg.pitch);
+          // Handle both old format (zoom) and new format (zoomA, zoomB)
+          const zoomA = msg.zoomA || msg.zoom || 8;
+          const zoomB = msg.zoomB || msg.zoom || 8;
+          animate(msg.animTime, msg.from, msg.to, zoomA, zoomB, msg.bearing, msg.pitch);
         } else if (msg.type === 'changeStyle') {
           changeStyle(msg.styleName);
         }
